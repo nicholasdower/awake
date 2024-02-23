@@ -1,0 +1,79 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        description: 'Version'
+jobs:
+  build-macos-13-x86_64-apple-darwin:
+    name: Build (macOS 13, x86_64-apple-darwin)
+    runs-on: macos-13
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Set Version
+        run: ./script/version.sh ${{ inputs.version }}
+      - name: Build
+        run: cargo build --release --target x86_64-apple-darwin
+      - name: Test
+        run: ./script/test.sh target/x86_64-apple-darwin/release
+      - name: Rename
+        run: mv target/x86_64-apple-darwin/release/awake awake-macos-13-x86_64-apple-darwin
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: awake-macos-13-x86_64-apple-darwin
+          path: awake-macos-13-x86_64-apple-darwin
+  build-macos-14-aarch64-apple-darwin:
+    name: Build (macOS 14, aarch64-apple-darwin)
+    runs-on: macos-14
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Set Version
+        run: ./script/version.sh ${{ inputs.version }}
+      - name: Build
+        run: cargo build --release --target aarch64-apple-darwin
+      - name: Test
+        run: ./script/test.sh target/aarch64-apple-darwin/release
+      - name: Rename
+        run: mv target/aarch64-apple-darwin/release/awake awake-macos-14-aarch64-apple-darwin
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: awake-macos-14-aarch64-apple-darwin
+          path: awake-macos-14-aarch64-apple-darwin
+  release:
+    name: Release
+    needs:
+      - build-macos-13-x86_64-apple-darwin
+      - build-macos-14-aarch64-apple-darwin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download (macOS 13, x86_64-apple-darwin)
+        uses: actions/download-artifact@v4
+        with:
+          name: awake-macos-13-x86_64-apple-darwin
+      - name: Download (macOS 14, aarch64-apple-darwin)
+        uses: actions/download-artifact@v4
+        with:
+          name: awake-macos-14-aarch64-apple-darwin
+      - name: Set Version
+        run: ./script/version.sh ${{ inputs.version }}
+      - name: Build
+        run: cargo build --release
+      - name: Test
+        run: ./script/test.sh target/release
+      - name: Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_PAT: ${{ secrets.HOMEBREW_PAT }}
+        run: ./script/release.sh awake ${{ inputs.version }} "Stay awake"
