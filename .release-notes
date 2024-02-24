@@ -1,1 +1,1 @@
-- No changes
+- Fix `--daemonize`. It just didn't work.

@@ -188,6 +188,22 @@ fn run() -> Result<(), String> {
         None => None,
     };
 
+    if args.daemonize {
+        let stdout = File::create("/tmp/awake.out").unwrap();
+        let stderr = File::create("/tmp/awake.err").unwrap();
+
+        let daemonize = Daemonize::new()
+            .pid_file("/tmp/awake.pid")
+            .working_directory("/tmp")
+            .stdout(stdout)
+            .stderr(stderr);
+
+        match daemonize.start() {
+            Ok(_) => (),
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+
     let iokit: IOKit = Default::default();
     let assertions = vec![
         iokit.create_assertion("PreventUserIdleDisplaySleep", true),
@@ -205,22 +221,6 @@ fn run() -> Result<(), String> {
             process::exit(0);
         }
     });
-
-    let stdout = File::create("/tmp/awake.out").unwrap();
-    let stderr = File::create("/tmp/awake.err").unwrap();
-
-    if args.daemonize {
-        let daemonize = Daemonize::new()
-            .pid_file("/tmp/awake.pid")
-            .working_directory("/tmp")
-            .stdout(stdout)
-            .stderr(stderr);
-
-        match daemonize.start() {
-            Ok(_) => (),
-            Err(e) => return Err(e.to_string()),
-        }
-    }
 
     match duration {
         Some(duration) => thread::sleep(std::time::Duration::from_secs(duration)),
