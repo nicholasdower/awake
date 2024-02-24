@@ -1,3 +1,8 @@
+## 1.2.0
+
+- Fix `--daemonize`. It just didn't work.
+- Add support for complex durations like `5h30m`.
+
 ## 1.1.2
 
 - Fix version string.
