@@ -19,10 +19,13 @@ cat << EOF > man/awake.1
 .SH NAME
 \fBawake\fR \- Stay awake
 .SH SYNOPSIS
-\fBawake\fR
+\fBawake\fR [-d]
 .SH DESCRIPTION
 Stay awake.
 .SH OPTIONS
+.TP
+\fB\-d, \-\-daemonize\fR
+Daemonize.
 .TP
 \fB\-h, \-\-help\fR
 Print help\.

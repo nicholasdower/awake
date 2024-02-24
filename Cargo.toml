@@ -7,6 +7,8 @@ edition = "2021"
 authors = ["Nick Dower <nicholasdower@gmail.com>"]
 
 [dependencies]
+clap = { version = "4.5", features = ["derive"] }
 core-foundation = "0.9.3"
 libloading = "0.8.1"
 signal-hook = "0.3.17"
+daemonize = "0.5.0"

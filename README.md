@@ -15,5 +15,15 @@ brew uninstall awake
 ## Help
 
 ```
-usage: awake
+usage: awake [-d]
+
+Description
+
+    Stay awake.
+
+Options
+
+    -d, --daemonize  Daemonize.
+    -h, --help       Print help.
+    -v, --version    Print version.
 ```

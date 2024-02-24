@@ -2,20 +2,51 @@
 
 #![cfg(target_os = "macos")]
 
-use signal_hook::{consts::SIGINT, iterator::Signals};
-use std::env;
-use std::process;
-use std::thread;
-
+use clap::Parser;
 use core_foundation::base::TCFType;
 use core_foundation::string::{CFString, CFStringRef};
+use daemonize::Daemonize;
 use libloading::{Library, Symbol};
+use signal_hook::{consts::SIGINT, iterator::Signals};
+use std::env;
+use std::fs::File;
 use std::mem::MaybeUninit;
+use std::process;
+use std::thread;
 
 type IOPMAssertionID = u32;
 type IOPMAssertionLevel = u32;
 const IOPMASSERTION_LEVEL_ON: u32 = 255;
 const IOPMASSERTION_LEVEL_OFF: u32 = 0;
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const HELP: &str = "\
+usage: awake [-d]
+
+Description
+
+    Stay awake.
+
+Options
+
+    -d, --daemonize  Daemonize.
+    -h, --help       Print help.
+    -v, --version    Print version.
+";
+
+#[derive(Parser)]
+#[command(disable_help_flag = true)]
+struct Cli {
+    #[arg(short, long)]
+    help: bool,
+
+    #[arg(short, long)]
+    version: bool,
+
+    #[arg(short, long)]
+    daemonize: bool,
+}
 
 pub struct IOKit {
     library: Library,
@@ -127,10 +158,22 @@ fn main() {
         panic!("not macos");
     }
 
-    let args: Vec<String> = env::args().collect();
-    if args.len() > 1 {
-        println!("usage: awake");
-        process::exit(1);
+    let args = match Cli::try_parse() {
+        Ok(args) => args,
+        Err(e) => {
+            eprintln!("{}\n{HELP}", e.kind());
+            process::exit(1);
+        }
+    };
+
+    if args.help {
+        println!("{HELP}");
+        return;
+    }
+
+    if args.version {
+        println!("quote {VERSION}");
+        return;
     }
 
     let iokit: IOKit = Default::default();
@@ -150,6 +193,22 @@ fn main() {
             process::exit(0);
         }
     });
+
+    let stdout = File::create("/tmp/awake.out").unwrap();
+    let stderr = File::create("/tmp/awake.err").unwrap();
+
+    if args.daemonize {
+        let daemonize = Daemonize::new()
+            .pid_file("/tmp/awake.pid")
+            .working_directory("/tmp")
+            .stdout(stdout)
+            .stderr(stderr);
+
+        match daemonize.start() {
+            Ok(_) => (),
+            Err(e) => eprintln!("error: {e}"),
+        }
+    }
 
     thread::park();
     release_assertions(&iokit, &assertions);
