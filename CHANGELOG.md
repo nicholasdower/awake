@@ -1,3 +1,7 @@
+## 1.1.1
+
+- Change package description.
+
 ## 1.1.0
 
 - Add `--daemonize`.
