@@ -17,7 +17,7 @@ mkdir man
 cat << EOF > man/awake.1
 .TH AWAKE 1 $date $version ""
 .SH NAME
-\fBawake\fR \- Stay awake
+\fBawake\fR \- Keep your Mac awake
 .SH SYNOPSIS
 \fBawake\fR [-d] [<duration>]
 .SH DESCRIPTION

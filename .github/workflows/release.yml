@@ -76,4 +76,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_PAT: ${{ secrets.HOMEBREW_PAT }}
-        run: ./script/release.sh awake ${{ inputs.version }} "Stay awake"
+        run: ./script/release.sh awake ${{ inputs.version }} "Keep your Mac awake"

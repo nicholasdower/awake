@@ -1,5 +1,5 @@
 class Awake < Formula
-  desc "Stay awake"
+  desc "Keep your Mac awake"
   homepage "https://github.com/nicholasdower/awake"
   license "MIT"
   version "1.1.0"
