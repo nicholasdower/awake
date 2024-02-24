@@ -15,11 +15,11 @@ brew uninstall awake
 ## Help
 
 ```
-usage: awake [-d]
+usage: awake [-d] [<duration>]
 
 Description
 
-    Stay awake.
+    Keep your Mac awake, optionally for the specified duration (e.g. 3000s, 300m, 30h, 3d).
 
 Options
 

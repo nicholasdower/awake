@@ -43,5 +43,5 @@ function test() {
 }
 
 ./awake -h 2>&1 | head -n 1 > actual
-printf "usage: awake [-d]\n" > expected
+printf "usage: awake [-d] [<duration>]\n" > expected
 test "help"

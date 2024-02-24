@@ -22,17 +22,17 @@ const IOPMASSERTION_LEVEL_OFF: u32 = 0;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const HELP: &str = "\
-usage: awake [-d]
+usage: awake [-d] [<duration>]
 
 Description
 
-    Stay awake.
+    Keep your Mac awake, optionally for the specified duration (e.g. 3000s, 300m, 30h, 3d).
 
 Options
 
     -d, --daemonize  Daemonize.
     -h, --help       Print help.
-    -v, --version    Print version.
+    -v, --version    Print version.\
 ";
 
 #[derive(Parser)]
@@ -46,6 +46,9 @@ struct Cli {
 
     #[arg(short, long)]
     daemonize: bool,
+
+    #[arg()]
+    duration: Option<String>,
 }
 
 pub struct IOKit {
@@ -154,27 +157,36 @@ impl Default for IOKit {
 }
 
 fn main() {
+    match run() {
+        Ok(_) => std::process::exit(0),
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
+fn run() -> Result<(), String> {
     if !cfg!(target_os = "macos") {
-        panic!("not macos");
+        return Err("not macos".to_string());
     }
 
-    let args = match Cli::try_parse() {
-        Ok(args) => args,
-        Err(e) => {
-            eprintln!("{}\n{HELP}", e.kind());
-            process::exit(1);
-        }
-    };
+    let args = Cli::try_parse().map_err(|e| format!("{}\n{HELP}", e.kind()))?;
 
     if args.help {
         println!("{HELP}");
-        return;
+        return Ok(());
     }
 
     if args.version {
         println!("quote {VERSION}");
-        return;
+        return Ok(());
     }
+
+    let duration = match args.duration {
+        Some(duration) => Some(parse_duration(duration)?),
+        None => None,
+    };
 
     let iokit: IOKit = Default::default();
     let assertions = vec![
@@ -206,17 +218,33 @@ fn main() {
 
         match daemonize.start() {
             Ok(_) => (),
-            Err(e) => eprintln!("error: {e}"),
+            Err(e) => return Err(e.to_string()),
         }
     }
 
-    thread::park();
+    match duration {
+        Some(duration) => thread::sleep(std::time::Duration::from_secs(duration)),
+        None => thread::park(),
+    }
     release_assertions(&iokit, &assertions);
-    process::exit(0);
+    Ok(())
 }
 
 fn release_assertions(iokit: &IOKit, assertions: &Vec<u32>) {
     for assertion in assertions {
         iokit.release_assertion(*assertion);
+    }
+}
+
+fn parse_duration(duration: String) -> Result<u64, String> {
+    let duration = duration.to_lowercase();
+    let (value, unit) = duration.split_at(duration.len() - 1);
+    let value: u64 = value.parse().map_err(|_| "invalid duration".to_string())?;
+    match unit {
+        "s" => Ok(value),
+        "m" => Ok(value * 60),
+        "h" => Ok(value * 60 * 60),
+        "d" => Ok(value * 60 * 60 * 24),
+        _ => Err("invalid duration".to_string()),
     }
 }
