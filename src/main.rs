@@ -1,5 +1,3 @@
-// From https://github.com/Randomblock1/caffeinate2/commit/514869fd8e1cada8945507cd4136ad02eb433315
-
 #![cfg(target_os = "macos")]
 
 use clap::Parser;
@@ -56,18 +54,21 @@ pub struct IOKit {
     assertion_name: CFString,
 }
 
+// See https://github.com/Randomblock1/caffeinate2/blob/master/src/power_management.rs
 impl IOKit {
-    pub fn new() -> IOKit {
-        let library =
-            unsafe { Library::new("/System/Library/Frameworks/IOKit.framework/IOKit").unwrap() };
+    pub fn new() -> Result<IOKit, String> {
+        let library = unsafe {
+            Library::new("/System/Library/Frameworks/IOKit.framework/IOKit")
+                .map_err(|_| "failed to load IOKit".to_string())?
+        };
         let assertion_name = CFString::new("awake");
-        IOKit {
+        Ok(IOKit {
             library,
             assertion_name,
-        }
+        })
     }
 
-    pub fn create_assertion(&self, assertion_type: &str, state: bool) -> u32 {
+    pub fn create_assertion(&self, assertion_type: &str, state: bool) -> Result<u32, String> {
         let iokit = &self.library;
         let iopmassertion_create_with_name: Symbol<
             unsafe extern "C" fn(
@@ -76,7 +77,8 @@ impl IOKit {
                 CFStringRef,
                 *mut IOPMAssertionID,
             ) -> i32,
-        > = unsafe { iokit.get(b"IOPMAssertionCreateWithName") }.unwrap();
+        > = unsafe { iokit.get(b"IOPMAssertionCreateWithName") }.map_err(|e| e.to_string())?;
+
         let type_ = CFString::new(assertion_type);
         let level = if state {
             IOPMASSERTION_LEVEL_ON
@@ -84,49 +86,45 @@ impl IOKit {
             IOPMASSERTION_LEVEL_OFF
         };
 
-        {
-            let mut id = MaybeUninit::uninit();
-            let status = unsafe {
-                iopmassertion_create_with_name(
-                    type_.as_concrete_TypeRef(),
-                    level,
-                    self.assertion_name.as_concrete_TypeRef(),
-                    id.as_mut_ptr(),
-                )
-            };
-            if status == 0 {
-                unsafe { id.assume_init() }
-            } else {
-                panic!(
-                    "Failed to create power management assertion with code: {:X}",
-                    status
-                );
-            }
+        let mut id = MaybeUninit::uninit();
+        let status = unsafe {
+            iopmassertion_create_with_name(
+                type_.as_concrete_TypeRef(),
+                level,
+                self.assertion_name.as_concrete_TypeRef(),
+                id.as_mut_ptr(),
+            )
+        };
+        if status == 0 {
+            unsafe { Ok(id.assume_init()) }
+        } else {
+            Err(format!("failed to create assertion ({status})"))
         }
     }
 
-    pub fn release_assertion(&self, assertion_id: u32) {
+    pub fn release_assertion(&self, assertion_id: u32) -> Result<(), String> {
         let iokit = &self.library;
         let iopmassertion_release: Symbol<unsafe extern "C" fn(IOPMAssertionID) -> u32> =
-            unsafe { iokit.get(b"IOPMAssertionRelease") }.unwrap();
+            unsafe { iokit.get(b"IOPMAssertionRelease") }.map_err(|e| e.to_string())?;
 
         let status = unsafe { iopmassertion_release(assertion_id) };
 
         match status {
-            0 => (),          // Success
-            0xE00002C2 => (), // Already released
-            _ => panic!(
-                "Failed to release power management assertion with code: {:X}",
-                status
-            ),
+            0 => Ok(()),          // Success
+            0xE00002C2 => Ok(()), // Already released
+            _ => Err(format!("failed to release assertion ({status})")),
         }
     }
 
-    pub fn declare_user_activity(&self, state: bool) -> u32 {
+    pub fn declare_user_activity(&self, state: bool) -> Result<u32, String> {
         let iokit = &self.library;
         let iopmassertion_declare_user_activity: Symbol<
             unsafe extern "C" fn(CFStringRef, IOPMAssertionLevel, *mut IOPMAssertionID) -> i32,
-        > = unsafe { iokit.get(b"IOPMAssertionDeclareUserActivity") }.unwrap();
+        > = unsafe {
+            iokit
+                .get(b"IOPMAssertionDeclareUserActivity")
+                .map_err(|e| e.to_string())?
+        };
 
         let level = if state {
             IOPMASSERTION_LEVEL_ON
@@ -142,26 +140,20 @@ impl IOKit {
                 id.as_mut_ptr(),
             )
         };
-        if status != 0 {
-            panic!("Failed to declare user activity with code: {:X}", status);
+        if status == 0 {
+            unsafe { Ok(id.assume_init()) }
+        } else {
+            Err(format!("failed to declare user activity ({status})"))
         }
-
-        unsafe { id.assume_init() }
-    }
-}
-
-impl Default for IOKit {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
 fn main() {
     match run() {
-        Ok(_) => std::process::exit(0),
+        Ok(_) => process::exit(0),
         Err(e) => {
             eprintln!("error: {e}");
-            std::process::exit(1);
+            process::exit(1);
         }
     }
 }
@@ -189,8 +181,8 @@ fn run() -> Result<(), String> {
     };
 
     if args.daemonize {
-        let stdout = File::create("/tmp/awake.out").unwrap();
-        let stderr = File::create("/tmp/awake.err").unwrap();
+        let stdout = File::create("/tmp/awake.out").map_err(|e| e.to_string())?;
+        let stderr = File::create("/tmp/awake.err").map_err(|e| e.to_string())?;
 
         let daemonize = Daemonize::new()
             .pid_file("/tmp/awake.pid")
@@ -204,21 +196,33 @@ fn run() -> Result<(), String> {
         }
     }
 
-    let iokit: IOKit = Default::default();
+    let iokit: IOKit = IOKit::new()?;
     let assertions = vec![
-        iokit.create_assertion("PreventUserIdleDisplaySleep", true),
-        iokit.create_assertion("PreventDiskIdle", true),
-        iokit.create_assertion("PreventUserIdleSystemSleep", true),
-        iokit.create_assertion("PreventSystemSleep", true),
-        iokit.declare_user_activity(true),
+        iokit.create_assertion("PreventUserIdleDisplaySleep", true)?,
+        iokit.create_assertion("PreventDiskIdle", true)?,
+        iokit.create_assertion("PreventUserIdleSystemSleep", true)?,
+        iokit.create_assertion("PreventSystemSleep", true)?,
+        iokit.declare_user_activity(true)?,
     ];
 
-    let mut signals = Signals::new([SIGINT]).unwrap();
+    let mut signals = Signals::new([SIGINT]).map_err(|e| e.to_string())?;
     let assertions_clone = assertions.clone();
     thread::spawn(move || {
+        let signal_iokit = match IOKit::new() {
+            Ok(iokit) => iokit,
+            Err(e) => {
+                eprintln!("error: {e}");
+                process::exit(1);
+            }
+        };
         if signals.forever().next().is_some() {
-            release_assertions(&IOKit::new(), &assertions_clone);
-            process::exit(0);
+            match release_assertions(&signal_iokit, &assertions_clone) {
+                Ok(_) => process::exit(0),
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    process::exit(1);
+                }
+            };
         }
     });
 
@@ -226,14 +230,13 @@ fn run() -> Result<(), String> {
         Some(duration) => thread::sleep(std::time::Duration::from_secs(duration)),
         None => thread::park(),
     }
-    release_assertions(&iokit, &assertions);
-    Ok(())
+    release_assertions(&iokit, &assertions)
 }
 
-fn release_assertions(iokit: &IOKit, assertions: &Vec<u32>) {
-    for assertion in assertions {
-        iokit.release_assertion(*assertion);
-    }
+fn release_assertions(iokit: &IOKit, assertions: &[u32]) -> Result<(), String> {
+    assertions
+        .iter()
+        .try_for_each(|assertion| iokit.release_assertion(*assertion))
 }
 
 fn parse_duration(duration: String) -> Result<u64, String> {
