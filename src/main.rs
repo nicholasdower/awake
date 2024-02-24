@@ -179,7 +179,7 @@ fn run() -> Result<(), String> {
     }
 
     if args.version {
-        println!("quote {VERSION}");
+        println!("awake {VERSION}");
         return Ok(());
     }
 
