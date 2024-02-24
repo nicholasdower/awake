@@ -24,7 +24,7 @@ usage: awake [-d] [<duration>]
 
 Description
 
-    Keep your Mac awake, optionally for the specified duration (e.g. 3000s, 300m, 30h, 3d).
+    Keep your Mac awake, optionally for the specified duration (e.g. 12h30m).
 
 Options
 
@@ -240,14 +240,21 @@ fn release_assertions(iokit: &IOKit, assertions: &[u32]) -> Result<(), String> {
 }
 
 fn parse_duration(duration: String) -> Result<u64, String> {
-    let duration = duration.to_lowercase();
-    let (value, unit) = duration.split_at(duration.len() - 1);
-    let value: u64 = value.parse().map_err(|_| "invalid duration".to_string())?;
-    match unit {
-        "s" => Ok(value),
-        "m" => Ok(value * 60),
-        "h" => Ok(value * 60 * 60),
-        "d" => Ok(value * 60 * 60 * 24),
-        _ => Err("invalid duration".to_string()),
+    let mut seconds = 0;
+    let mut number = 0;
+    for c in duration.chars() {
+        if c.is_ascii_digit() {
+            number = number * 10 + c.to_digit(10).unwrap();
+        } else {
+            match c {
+                'd' => seconds += number as u64 * 24 * 60 * 60,
+                'h' => seconds += number as u64 * 60 * 60,
+                'm' => seconds += number as u64 * 60,
+                's' => seconds += number as u64,
+                _ => return Err("invalid duration".to_string()),
+            }
+            number = 0;
+        }
     }
+    Ok(seconds)
 }

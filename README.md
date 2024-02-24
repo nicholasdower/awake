@@ -19,7 +19,7 @@ usage: awake [-d] [<duration>]
 
 Description
 
-    Keep your Mac awake, optionally for the specified duration (e.g. 3000s, 300m, 30h, 3d).
+    Keep your Mac awake, optionally for the specified duration (e.g. 12h30m).
 
 Options
 

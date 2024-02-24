@@ -21,7 +21,7 @@ cat << EOF > man/awake.1
 .SH SYNOPSIS
 \fBawake\fR [-d] [<duration>]
 .SH DESCRIPTION
-Keep your Mac awake, optionally for the specified duration (e\.g\. 3000s, 300m, 30h, 3d)\.
+Keep your Mac awake, optionally for the specified duration (e\.g\. 12h30m)\.
 .SH OPTIONS
 .TP
 \fB\-d, \-\-daemonize\fR
