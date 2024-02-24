@@ -16,13 +16,4 @@ brew uninstall awake
 
 ```
 usage: awake
-
-Description
-
-    Stay awake.
-
-Options
-
-    -h, --help       Print help.
-    -v, --version    Print version.
 ```
