@@ -1,3 +1,7 @@
+## 1.1.2
+
+- Fix version string.
+
 ## 1.1.1
 
 - Change package description.
