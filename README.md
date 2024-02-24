@@ -15,11 +15,11 @@ brew uninstall awake
 ## Help
 
 ```
-usage: awake [<duration>]
+usage: awake
 
 Description
 
-    Stay awake, optionally for the specified duration.
+    Stay awake.
 
 Options
 

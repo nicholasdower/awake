@@ -19,9 +19,9 @@ cat << EOF > man/awake.1
 .SH NAME
 \fBawake\fR \- Stay awake
 .SH SYNOPSIS
-\fBawake\fR [<duration>]
+\fBawake\fR
 .SH DESCRIPTION
-Stay awake, optionally for the specified duration.
+Stay awake.
 .SH OPTIONS
 .TP
 \fB\-h, \-\-help\fR

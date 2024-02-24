@@ -55,7 +55,7 @@ jobs:
     needs:
       - build-macos-13-x86_64-apple-darwin
       - build-macos-14-aarch64-apple-darwin
-    runs-on: ubuntu-latest
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
       - name: Download (macOS 13, x86_64-apple-darwin)
