@@ -29,7 +29,7 @@ Description
 
 Options
 
-    -d, --daemonize  Daemonize.
+    -d, --daemon     Run as a daemon.
     -h, --help       Print help.
     -v, --version    Print version.\
 ";
@@ -46,7 +46,7 @@ struct Cli {
     version: bool,
 
     #[arg(short, long)]
-    daemonize: bool,
+    daemon: bool,
 
     #[arg()]
     duration: Option<String>,
@@ -194,13 +194,15 @@ fn run() -> Result<(), String> {
                     parse_duration(&duration).map_err(|_| "invalid duration".to_string())?;
                 let datetime = Local::now() + Duration::seconds(seconds as i64);
                 let datetime_str = datetime.format(DATETIME_FORMAT).to_string();
-                let args: Vec<String> = env::args().collect();
+                let raw_args: Vec<String> = env::args().collect();
                 let program_name = "awake".to_string();
-                let program_name = args.first().unwrap_or(&program_name);
-                let _ = execvp(
-                    program_name,
-                    &[program_name.as_str(), &datetime_str.as_str()],
-                );
+                let program_name = raw_args.first().unwrap_or(&program_name);
+                let program_args = if args.daemon {
+                    vec![program_name.as_str(), "--daemon", &datetime_str.as_str()]
+                } else {
+                    vec![program_name.as_str(), &datetime_str.as_str()]
+                };
+                let _ = execvp(program_name, &program_args);
                 return Err("failed to replace process".to_string());
             }
         }
@@ -213,7 +215,7 @@ fn run() -> Result<(), String> {
         }
     }
 
-    if args.daemonize {
+    if args.daemon {
         let daemonize = Daemonize::new();
 
         match daemonize.start() {

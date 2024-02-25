@@ -74,7 +74,17 @@ test "invalid duration: 1m1m"
 printf "error: invalid duration\n" > expected
 test "invalid duration: 1m1d"
 
-killall awake 2>/dev/null
+./awake --foo 2>&1 | head -n 1 > actual
+printf "error: unexpected argument found\n" > expected
+test "invalid args: --foo"
+
+./awake foo bar 2>&1 | head -n 1 > actual
+printf "error: unexpected argument found\n" > expected
+test "invalid args: --foo"
+
+./awake 0s > actual 2>&1
+printf "" > expected
+test "zero duration: 0s"
 
 printf "" > expected
 pmset -g assertions | grep -o -E '[A-Z][a-zA-Z]+ named: "awake"' > actual
@@ -93,4 +103,52 @@ sleep 0.1
 cp expected_pm expected
 pmset -g assertions | grep -o -E '[A-Z][a-zA-Z]+ named: "awake"' > actual
 test "power management: indefinite"
+killall awake
+
+./awake -d
+sleep 0.1
+cp expected_pm expected
+pmset -g assertions | grep -o -E '[A-Z][a-zA-Z]+ named: "awake"' > actual
+test "power management: indefinite daemon"
+killall awake
+
+./awake -d 10m
+sleep 0.1
+pgrep -l -f awake | grep -o -E 'awake --daemon 20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$' >/dev/null
+if [ $? -eq 0 ]; then
+  printf "\033[0;32mtest passed: daemon: duration\033[0m\n"
+else
+  printf "\033[0;31mtest failed: daemon: duration\033[0m\n"
+  pgrep -l -f awake
+  exit 1
+fi
+
+killall awake
+
+./awake 10m &
+sleep 0.1
+pgrep -l -f awake | grep -o -E 'awake 20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$' >/dev/null
+if [ $? -eq 0 ]; then
+  printf "\033[0;32mtest passed: process: duration\033[0m\n"
+else
+  printf "\033[0;31mtest failed: process: duration\033[0m\n"
+  pgrep -l -f awake
+  exit 1
+fi
+
+killall awake
+
+./awake 10m &
+sleep 0.1
+./awake 20m &
+sleep 0.1
+count=$(pgrep awake | wc -l | tr -d ' ')
+if [ $? -eq 0 ]; then
+  printf "\033[0;32mtest passed: process: replaces other process\033[0m\n"
+else
+  printf "\033[0;31mtest failed: process: replaces other process\033[0m\n"
+  pgrep -l -f awake
+  exit 1
+fi
+
 killall awake
