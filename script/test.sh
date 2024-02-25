@@ -77,3 +77,23 @@ test "invalid duration: 1m1m"
 ./awake 1m1d > actual 2>&1
 printf "error: invalid duration\n" > expected
 test "invalid duration: 1m1d"
+
+killall awake 2>/dev/null
+
+printf "" > expected
+pmset -g assertions | grep -o -E '[A-Z][a-zA-Z]+ named: "awake"' > actual
+test "power management: not running"
+
+cat <<-EOF > expected_pm
+PreventUserIdleSystemSleep named: "awake"
+PreventUserIdleDisplaySleep named: "awake"
+PreventSystemSleep named: "awake"
+UserIsActive named: "awake"
+PreventDiskIdle named: "awake"
+EOF
+
+./awake &
+cp expected_pm expected
+pmset -g assertions | grep -o -E '[A-Z][a-zA-Z]+ named: "awake"' > actual
+test "power management: indefinite"
+killall awake

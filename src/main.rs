@@ -176,7 +176,9 @@ fn run() -> Result<(), String> {
     }
 
     let duration = match args.duration {
-        Some(duration) => Some(parse_duration(&duration).map_err(|_| "invalid duration".to_string())?),
+        Some(duration) => {
+            Some(parse_duration(&duration).map_err(|_| "invalid duration".to_string())?)
+        }
         None => None,
     };
 
@@ -239,7 +241,7 @@ fn release_assertions(iokit: &IOKit, assertions: &[u32]) -> Result<(), String> {
         .try_for_each(|assertion| iokit.release_assertion(*assertion))
 }
 
-fn parse_duration(input: &String) -> Result<u64, ()> {
+fn parse_duration(input: &str) -> Result<u64, ()> {
     if input.is_empty() {
         return Err(());
     }
