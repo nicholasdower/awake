@@ -1,9 +1,11 @@
 #![cfg(target_os = "macos")]
 
+use chrono::{Duration, Local, NaiveDateTime};
 use clap::Parser;
 use core_foundation::base::TCFType;
 use core_foundation::string::{CFString, CFStringRef};
 use daemonize::Daemonize;
+use exec::execvp;
 use libloading::{Library, Symbol};
 use signal_hook::{consts::SIGINT, iterator::Signals};
 use std::env;
@@ -19,11 +21,11 @@ const IOPMASSERTION_LEVEL_OFF: u32 = 0;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const HELP: &str = "\
-usage: awake [-d] [<duration>]
+usage: awake [-d] [<duration> | <datetime>]
 
 Description
 
-    Keep your Mac awake, optionally for the specified duration (e.g. 12h30m).
+    Keep your Mac awake, optionally for the specified duration (e.g. 12h30m) or until the specified datetime (e.g. 2030-01-01T00:00:00).
 
 Options
 
@@ -31,6 +33,8 @@ Options
     -h, --help       Print help.
     -v, --version    Print version.\
 ";
+
+const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 
 #[derive(Parser)]
 #[command(disable_help_flag = true)]
@@ -174,14 +178,40 @@ fn run() -> Result<(), String> {
         return Ok(());
     }
 
+    kill_others()?;
+
     let duration = match args.duration {
         Some(duration) => {
-            Some(parse_duration(&duration).map_err(|_| "invalid duration".to_string())?)
+            if duration.len() == 19 && duration.chars().nth(4) == Some('-') {
+                let datetime = NaiveDateTime::parse_from_str(&duration, DATETIME_FORMAT)
+                    .map_err(|e| e.to_string())?;
+                let now = Local::now().naive_local();
+                let duration = datetime.signed_duration_since(now).num_seconds();
+                let duration = std::cmp::max(duration, 0) as u64;
+                Some(duration)
+            } else {
+                let seconds =
+                    parse_duration(&duration).map_err(|_| "invalid duration".to_string())?;
+                let datetime = Local::now() + Duration::seconds(seconds as i64);
+                let datetime_str = datetime.format(DATETIME_FORMAT).to_string();
+                let args: Vec<String> = env::args().collect();
+                let program_name = "awake".to_string();
+                let program_name = args.first().unwrap_or(&program_name);
+                let _ = execvp(
+                    program_name,
+                    &[program_name.as_str(), &datetime_str.as_str()],
+                );
+                return Err("failed to replace process".to_string());
+            }
         }
         None => None,
     };
 
-    kill_others()?;
+    if let Some(duration) = duration {
+        if duration == 0 {
+            return Ok(());
+        }
+    }
 
     if args.daemonize {
         let daemonize = Daemonize::new();
@@ -257,7 +287,7 @@ fn parse_duration(input: &str) -> Result<u64, ()> {
                 return Err(());
             }
             let number = number_string.parse::<u64>().map_err(|_| ())?;
-            if number == 0 {
+            if number == 0 && number_string != "0" {
                 return Err(());
             }
             let factor = match c {

@@ -1,2 +1,3 @@
 - Improve invalid duration detection.
 - Kill other awake processes on startup.
+- Replace process with a new invocation using a datetime string.

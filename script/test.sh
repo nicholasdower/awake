@@ -43,7 +43,7 @@ function test() {
 }
 
 ./awake -h 2>&1 | head -n 1 > actual
-printf "usage: awake [-d] [<duration>]\n" > expected
+printf "usage: awake [-d] [<duration> | <datetime>]\n" > expected
 test "help"
 
 ./awake 0 > actual 2>&1
@@ -57,10 +57,6 @@ test "invalid duration: m"
 ./awake 1 > actual 2>&1
 printf "error: invalid duration\n" > expected
 test "invalid duration: 1"
-
-./awake 0m > actual 2>&1
-printf "error: invalid duration\n" > expected
-test "invalid duration: 0m"
 
 ./awake 01m > actual 2>&1
 printf "error: invalid duration\n" > expected
@@ -93,6 +89,7 @@ PreventDiskIdle named: "awake"
 EOF
 
 ./awake &
+sleep 0.1
 cp expected_pm expected
 pmset -g assertions | grep -o -E '[A-Z][a-zA-Z]+ named: "awake"' > actual
 test "power management: indefinite"
