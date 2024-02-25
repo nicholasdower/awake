@@ -1,3 +1,11 @@
+## 2.0.0
+
+- Improve invalid duration detection.
+- Kill other awake processes on startup.
+- Replace process with a new invocation using a datetime string.
+- Rename `--daemonize` to `--daemon`.
+- Add `--kill`.
+
 ## 1.2.0
 
 - Fix `--daemonize`. It just didn't work.
