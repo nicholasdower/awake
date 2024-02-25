@@ -7,9 +7,8 @@ use daemonize::Daemonize;
 use libloading::{Library, Symbol};
 use signal_hook::{consts::SIGINT, iterator::Signals};
 use std::env;
-use std::fs::File;
 use std::mem::MaybeUninit;
-use std::process;
+use std::process::{self, Command};
 use std::thread;
 
 type IOPMAssertionID = u32;
@@ -182,15 +181,10 @@ fn run() -> Result<(), String> {
         None => None,
     };
 
-    if args.daemonize {
-        let stdout = File::create("/tmp/awake.out").map_err(|e| e.to_string())?;
-        let stderr = File::create("/tmp/awake.err").map_err(|e| e.to_string())?;
+    kill_others()?;
 
-        let daemonize = Daemonize::new()
-            .pid_file("/tmp/awake.pid")
-            .working_directory("/tmp")
-            .stdout(stdout)
-            .stderr(stderr);
+    if args.daemonize {
+        let daemonize = Daemonize::new();
 
         match daemonize.start() {
             Ok(_) => (),
@@ -288,4 +282,22 @@ fn parse_duration(input: &str) -> Result<u64, ()> {
     }
 
     Ok(seconds)
+}
+
+fn kill_others() -> Result<(), String> {
+    let current_pid = process::id().to_string();
+    let output = Command::new("pgrep")
+        .arg("awake")
+        .output()
+        .map_err(|_| "failed to list processes".to_string())?;
+
+    if !output.stdout.is_empty() {
+        let pids = String::from_utf8_lossy(&output.stdout);
+        for pid in pids.split_whitespace() {
+            if pid != current_pid {
+                let _ = Command::new("kill").arg(pid).output();
+            }
+        }
+    }
+    Ok(())
 }

@@ -1,1 +1,2 @@
 - Improve invalid duration detection.
+- Kill other awake processes on startup.
