@@ -176,7 +176,7 @@ fn run() -> Result<(), String> {
     }
 
     let duration = match args.duration {
-        Some(duration) => Some(parse_duration(duration)?),
+        Some(duration) => Some(parse_duration(&duration).map_err(|_| "invalid duration".to_string())?),
         None => None,
     };
 
@@ -239,22 +239,51 @@ fn release_assertions(iokit: &IOKit, assertions: &[u32]) -> Result<(), String> {
         .try_for_each(|assertion| iokit.release_assertion(*assertion))
 }
 
-fn parse_duration(duration: String) -> Result<u64, String> {
-    let mut seconds = 0;
-    let mut number = 0;
-    for c in duration.chars() {
+fn parse_duration(input: &String) -> Result<u64, ()> {
+    if input.is_empty() {
+        return Err(());
+    }
+
+    let mut seconds: u64 = 0;
+    let mut number_string = "".to_string();
+    let mut last_char_was_digit = false;
+    let mut max_factor = u64::MAX;
+
+    for c in input.chars() {
         if c.is_ascii_digit() {
-            number = number * 10 + c.to_digit(10).unwrap();
+            number_string.push(c);
+            last_char_was_digit = true;
         } else {
-            match c {
-                'd' => seconds += number as u64 * 24 * 60 * 60,
-                'h' => seconds += number as u64 * 60 * 60,
-                'm' => seconds += number as u64 * 60,
-                's' => seconds += number as u64,
-                _ => return Err("invalid duration".to_string()),
+            if !last_char_was_digit {
+                return Err(());
             }
-            number = 0;
+            if number_string.len() > 1 && number_string.starts_with('0') {
+                return Err(());
+            }
+            let number = number_string.parse::<u64>().map_err(|_| ())?;
+            if number == 0 {
+                return Err(());
+            }
+            let factor = match c {
+                'd' => 24 * 60 * 60,
+                'h' => 60 * 60,
+                'm' => 60,
+                's' => 1,
+                _ => return Err(()),
+            };
+            if factor >= max_factor {
+                return Err(());
+            }
+            max_factor = factor;
+            seconds += number * factor;
+            number_string = "".to_string();
+            last_char_was_digit = false;
         }
     }
+
+    if !number_string.is_empty() || last_char_was_digit {
+        return Err(());
+    }
+
     Ok(seconds)
 }
