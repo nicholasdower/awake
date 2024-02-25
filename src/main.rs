@@ -30,6 +30,7 @@ Description
 Options
 
     -d, --daemon     Run as a daemon.
+    -k, --kill       Kill any running awake processes.
     -h, --help       Print help.
     -v, --version    Print version.\
 ";
@@ -47,6 +48,9 @@ struct Cli {
 
     #[arg(short, long)]
     daemon: bool,
+
+    #[arg(short, long)]
+    kill: bool,
 
     #[arg()]
     duration: Option<String>,
@@ -179,6 +183,10 @@ fn run() -> Result<(), String> {
     }
 
     kill_others()?;
+
+    if args.kill {
+        return Ok(());
+    }
 
     let duration = match args.duration {
         Some(duration) => {

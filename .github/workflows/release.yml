@@ -48,8 +48,8 @@ jobs:
         run: cargo build --release --target x86_64-apple-darwin
       - name: Test
         run: ./script/test.sh target/x86_64-apple-darwin/release
-      - name: Rename
-        run: mv target/x86_64-apple-darwin/release/awake awake-macos-13-x86_64-apple-darwin
+      - name: Copy
+        run: cp target/x86_64-apple-darwin/release/awake awake-macos-13-x86_64-apple-darwin
       - name: Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

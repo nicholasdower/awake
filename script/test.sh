@@ -152,3 +152,15 @@ else
 fi
 
 killall awake
+
+./awake 10m &
+sleep 0.1
+./awake --kill
+count=$(pgrep awake | wc -l | tr -d ' ')
+if [ $? -eq 0 ]; then
+  printf "\033[0;32mtest passed: kill\033[0m\n"
+else
+  printf "\033[0;31mtest failed: kill\033[0m\n"
+  pgrep -l -f awake
+  exit 1
+fi

@@ -23,7 +23,8 @@ Description
 
 Options
 
-    -d, --daemonize  Daemonize.
+    -d, --daemon     Run as a daemon.
+    -k, --kill       Kill any running awake processes.
     -h, --help       Print help.
     -v, --version    Print version.
 ```
