@@ -1,3 +1,7 @@
+## 2.0.1
+
+- Kill other processes with library rather than shell.
+
 ## 2.0.0
 
 - Improve invalid duration detection.
