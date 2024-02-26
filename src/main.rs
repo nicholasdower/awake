@@ -10,8 +10,9 @@ use libloading::{Library, Symbol};
 use signal_hook::{consts::SIGINT, iterator::Signals};
 use std::env;
 use std::mem::MaybeUninit;
-use std::process::{self, Command};
+use std::process;
 use std::thread;
+use sysinfo::{Signal, System};
 
 type IOPMAssertionID = u32;
 type IOPMAssertionLevel = u32;
@@ -182,9 +183,8 @@ fn run() -> Result<(), String> {
         return Ok(());
     }
 
-    kill_others()?;
-
     if args.kill {
+        kill_others()?;
         return Ok(());
     }
 
@@ -224,13 +224,17 @@ fn run() -> Result<(), String> {
     }
 
     if args.daemon {
-        let daemonize = Daemonize::new();
+        let stdout = std::fs::File::create("/tmp/awake.out").unwrap();
+        let stderr = std::fs::File::create("/tmp/awake.err").unwrap();
+        let daemonize = Daemonize::new().stdout(stdout).stderr(stderr);
 
         match daemonize.start() {
             Ok(_) => (),
             Err(e) => return Err(e.to_string()),
         }
     }
+
+    kill_others()?;
 
     let iokit: IOKit = IOKit::new()?;
     let assertions = vec![
@@ -325,18 +329,13 @@ fn parse_duration(input: &str) -> Result<u64, ()> {
 }
 
 fn kill_others() -> Result<(), String> {
-    let current_pid = process::id().to_string();
-    let output = Command::new("pgrep")
-        .arg("awake")
-        .output()
-        .map_err(|_| "failed to list processes".to_string())?;
+    let current_pid =
+        sysinfo::get_current_pid().map_err(|_| "could not get process info".to_string())?;
 
-    if !output.stdout.is_empty() {
-        let pids = String::from_utf8_lossy(&output.stdout);
-        for pid in pids.split_whitespace() {
-            if pid != current_pid {
-                let _ = Command::new("kill").arg(pid).output();
-            }
+    let system = System::new_all();
+    for process in system.processes_by_name("awake") {
+        if process.pid() != current_pid && process.kill_with(Signal::Interrupt).is_none() {
+            return Err("could not kill other processes".to_string());
         }
     }
     Ok(())
