@@ -191,11 +191,17 @@ fn run() -> Result<(), String> {
     let duration = match args.duration {
         Some(duration) => {
             if duration.len() == 19 && duration.chars().nth(4) == Some('-') {
+                let datetime_str = duration.clone();
                 let datetime = NaiveDateTime::parse_from_str(&duration, DATETIME_FORMAT)
                     .map_err(|e| e.to_string())?;
                 let now = Local::now().naive_local();
                 let duration = datetime.signed_duration_since(now).num_seconds();
                 let duration = std::cmp::max(duration, 0) as u64;
+                if duration == 0 {
+                    return Ok(());
+                } else {
+                    println!("staying awake until {}", datetime_str);
+                }
                 Some(duration)
             } else {
                 let seconds =
@@ -214,14 +220,11 @@ fn run() -> Result<(), String> {
                 return Err("failed to replace process".to_string());
             }
         }
-        None => None,
-    };
-
-    if let Some(duration) = duration {
-        if duration == 0 {
-            return Ok(());
+        None => {
+            println!("staying awake indefinitely");
+            None
         }
-    }
+    };
 
     if args.daemon {
         let stdout = std::fs::File::create("/tmp/awake.out").unwrap();
