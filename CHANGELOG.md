@@ -1,3 +1,8 @@
+## 2.1.0
+
+- Print wake time on start.
+- Fix off by one issue. Handle 0s.
+
 ## 2.0.1
 
 - Kill other processes with library rather than shell.
