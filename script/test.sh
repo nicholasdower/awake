@@ -84,7 +84,19 @@ test "invalid args: --foo"
 
 ./awake 0s > actual 2>&1
 printf "" > expected
-test "zero duration: 0s"
+test "zero duration"
+
+./awake 1s -d 2>&1 | grep -E -o '^.{19}' > actual
+printf "staying awake until\n" > expected
+test "message: definite"
+
+killall awake
+
+./awake -d >actual 2>&1
+printf "staying awake indefinitely\n" > expected
+test "message: indefinite"
+
+killall awake
 
 printf "" > expected
 pmset -g assertions | grep -o -E '[A-Z][a-zA-Z]+ named: "awake"' > actual

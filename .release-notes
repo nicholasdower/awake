@@ -1,1 +1,2 @@
 - Print wake time on start.
+- Fix off by one issue. Handle 0s.

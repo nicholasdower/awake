@@ -199,14 +199,17 @@ fn run() -> Result<(), String> {
                 let duration = std::cmp::max(duration, 0) as u64;
                 if duration == 0 {
                     return Ok(());
-                } else {
-                    println!("staying awake until {}", datetime_str);
                 }
+                println!("staying awake until {}", datetime_str);
                 Some(duration)
             } else {
                 let seconds =
                     parse_duration(&duration).map_err(|_| "invalid duration".to_string())?;
-                let datetime = Local::now() + Duration::seconds(seconds as i64);
+
+                if seconds == 0 {
+                    return Ok(());
+                }
+                let datetime = Local::now() + Duration::seconds(seconds as i64 + 1);
                 let datetime_str = datetime.format(DATETIME_FORMAT).to_string();
                 let raw_args: Vec<String> = env::args().collect();
                 let program_name = "awake".to_string();
